@@ -125,7 +125,7 @@ private:
 
         setAlwaysOnTop (true);
         setVisible (true);
-        addToDesktop (0);
+        addToDesktop (0, TopLevelWindow::getActiveTopLevelWindow()->getWindowHandle());
 
         enterModalState (true,
                          ModalCallbackFunction::create ([this] (int)
@@ -162,7 +162,7 @@ private:
                 popoverController.delegate = popoverDelegate.get();
             }
 
-            if (auto* parentController = peer->controller)
+            if (auto* parentController = peer->window.rootViewController)
                 [parentController showViewController: controller.get() sender: parentController];
         }
     }
