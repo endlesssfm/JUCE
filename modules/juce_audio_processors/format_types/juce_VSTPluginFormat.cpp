@@ -83,9 +83,6 @@ JUCE_BEGIN_IGNORE_WARNINGS_MSVC (4355)
 //==============================================================================
 namespace juce
 {
-#if JUCE_WINDOWS && JUCE_WIN_PER_MONITOR_DPI_AWARE
- extern void setThreadDPIAwarenessForWindow (HWND);
-#endif
 
 //==============================================================================
 namespace
@@ -382,7 +379,7 @@ private:
         switchValueType.entries.add (new Entry({ TRANS("Off"), Range ("[0, 0.5[") }));
         switchValueType.entries.add (new Entry({ TRANS("On"),  Range ("[0.5, 1]") }));
 
-        forEachXmlChildElement (xml, item)
+        for (auto* item : xml.getChildIterator())
         {
             if (item->hasTagName ("Param"))           parseParam (*item, nullptr, nullptr);
             else if (item->hasTagName ("ValueType"))  parseValueType (*item);
@@ -436,7 +433,7 @@ private:
         int curEntry = 0;
         const int numEntries = item.getNumChildElements();
 
-        forEachXmlChildElementWithTagName (item, entryXml, "Entry")
+        for (auto* entryXml : item.getChildWithTagNameIterator ("Entry"))
         {
             auto entry = new Entry();
             entry->name = entryXml->getStringAttribute ("name");
@@ -465,7 +462,7 @@ private:
         templates.add (temp);
         temp->name = item.getStringAttribute ("name");
 
-        forEachXmlChildElement (item, param)
+        for (auto* param : item.getChildIterator())
             parseParam (*param, nullptr, temp);
     }
 
@@ -514,7 +511,7 @@ private:
         }
         else
         {
-            forEachXmlChildElement (item, subItem)
+            for (auto* subItem : item.getChildIterator())
             {
                 if (subItem->hasTagName ("Param"))       parseParam (*subItem, group, nullptr);
                 else if (subItem->hasTagName ("Group"))  parseGroup (*subItem, group);
@@ -1602,8 +1599,8 @@ struct VSTPluginInstance     : public AudioPluginInstance,
 
     void handleAsyncUpdate() override
     {
-        // indicates that something about the plugin has changed..
-        updateHostDisplay();
+        updateHostDisplay (AudioProcessorListener::ChangeDetails().withProgramChanged (true)
+                                                                  .withParameterInfoChanged (true));
     }
 
     pointer_sized_int handleCallback (int32 opcode, int32 index, pointer_sized_int value, void* ptr, float opt)
@@ -2865,9 +2862,7 @@ public:
            #if JUCE_WINDOWS
             if (pluginHWND != 0)
             {
-               #if JUCE_WIN_PER_MONITOR_DPI_AWARE
-                setThreadDPIAwarenessForWindow (pluginHWND);
-               #endif
+                ScopedThreadDPIAwarenessSetter threadDpiAwarenessSetter { pluginHWND };
 
                 MoveWindow (pluginHWND, pos.getX(), pos.getY(),
                             roundToInt (getWidth()  * nativeScaleFactor),
@@ -3130,9 +3125,7 @@ private:
                 // very dodgy logic to decide which size is right.
                 if (std::abs (rw - w) > 350 || std::abs (rh - h) > 350)
                 {
-                   #if JUCE_WIN_PER_MONITOR_DPI_AWARE
-                    setThreadDPIAwarenessForWindow (pluginHWND);
-                   #endif
+                    ScopedThreadDPIAwarenessSetter threadDpiAwarenessSetter { pluginHWND };
 
                     SetWindowPos (pluginHWND, 0,
                                   0, 0, roundToInt (rw * nativeScaleFactor), roundToInt (rh * nativeScaleFactor),
